@@ -128,7 +128,7 @@ def get_lfs_api_token(host, path):
         https://github.com/git-lfs/git-lfs/blob/master/docs/api/server-discovery.md
     """
     header_info = {}
-    query_cmd = 'ssh git@' + host + ' git-lfs-authenticate ' + path + ' download'
+    query_cmd = 'ssh -q git@' + host + ' git-lfs-authenticate ' + path + ' download'
     output = check_output(query_cmd.split()).strip().decode('utf8')
     if output:
         query_resp = json.loads(output)
