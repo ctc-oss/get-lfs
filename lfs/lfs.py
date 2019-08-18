@@ -15,7 +15,7 @@ def client_type():
     return api.client()
 
 
-def get_from(uri):
+def parse(uri):
     if not is_uri(uri):
         raise ValueError("uri must start with lfs://")
     splits = uri.split(":")
@@ -27,25 +27,31 @@ def get_from(uri):
         splits2 = splits[1].split("@")
         https = "https:%s" % splits2[0]
         ref = splits2[1]
+    return path, https, ref
 
-    return get(path, url=https, ref=ref)
+
+def get(uri):
+    path, https, ref = parse(uri)
+    return get_from(path, url=https, ref=ref)
 
 
-def get(path, url=None, ref=None):
+def get_from(path, url, ref):
     sumstr = hashlib.sha1("%s:%s" % (url, ref)).hexdigest()
-
-    if not ref:
-        ref = 'master'
-
-    if not url or url.endswith("_"):
-        if 'REPO_URL' in os.environ:
-            url = os.getenv('REPO_URL')
-        else:
-            raise ValueError("No url was specified and REPO_URL was not set")
-
     wd = "/tmp/%s" % sumstr
-    if not os.path.exists(wd):
-        os.mkdir(wd)
 
-    api.checkout(url, ref, [path], [], wd)
-    return os.path.join(wd, path)
+    if not os.path.isdir('%s/.git' % wd):
+        if not os.path.exists(wd):
+            os.mkdir(wd)
+        if not url or url.endswith("_"):
+            if 'REPO_URL' in os.environ:
+                url = os.getenv('REPO_URL')
+            else:
+                raise ValueError("No url was specified and REPO_URL was not set")
+
+    multi = hasattr(path, "__iter__")
+    paths = path if multi else [path]
+
+    api.checkout(url, ref, paths, [], wd)
+
+    files = map(lambda p: os.path.join(wd, p), paths)
+    return files if multi else files[0]
