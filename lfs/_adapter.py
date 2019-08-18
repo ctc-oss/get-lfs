@@ -3,7 +3,10 @@ from __future__ import division, print_function, unicode_literals
 import json
 import os
 import pprint
-from subprocess import CalledProcessError, check_output, PIPE, Popen, STDOUT
+import shutil
+from contextlib import contextmanager
+from subprocess import CalledProcessError, check_output, PIPE, Popen
+from tempfile import mkdtemp, NamedTemporaryFile
 
 try:
     from urllib.parse import urlsplit, urlunsplit
@@ -17,12 +20,16 @@ except ImportError:
 MEDIA_TYPE = 'application/vnd.git-lfs+json'
 POST_HEADERS = {'Accept': MEDIA_TYPE, 'Content-Type': MEDIA_TYPE}
 
-from contextlib import contextmanager
-import os
-import shutil
-from tempfile import mkdtemp, NamedTemporaryFile
+
+def client():
+    return 'adapter'
 
 
+def checkout(url, ref, include, exclude, dest):
+    fetch(url, ref, include, checkout_dir=dest)
+
+
+@contextmanager
 def ignore_missing_file(filename=None):
     try:
         yield
@@ -70,9 +77,7 @@ def force_link(source, link_name):
     # WARNING not atomic
     with ignore_missing_file():
         os.remove(link_name)
-
-
-os.link(source, link_name)
+    os.link(source, link_name)
 
 
 def git_show(git_repo, p):
@@ -91,7 +96,7 @@ def get_lfs_endpoint_url(git_repo, checkout_dir):
                 'git config -f .lfsconfig --get lfs.url'.split()
             ).strip().decode('utf8')
     except CalledProcessError:
-        with in_dir(git_repo):
+        with in_dir(checkout_dir):
             url = check_output(
                 'git config --get remote.origin.url'.split()
             ).strip().decode('utf8')
@@ -206,22 +211,10 @@ def fetch_urls(lfs_url, lfs_auth_info, oid_list):
     return objects
 
 
-def fetch(git_repo, checkout_dir=None, verbose=0):
-    """Download all the files managed by Git LFS
-    """
-    git_dir = git_repo + '/.git' if os.path.isdir(git_repo + '/.git') else git_repo
-    checkout_dir = checkout_dir or git_repo
-    if checkout_dir == git_dir:
-        print('Can\'t checkout into a bare repo, please provide a valid '
-              'checkout_dir')
-        raise SystemExit(1)
-    checkout_git_dir = checkout_dir + '/.git'
-    if not os.path.isdir(checkout_git_dir):
-        with TempDir(dir=checkout_dir) as d:
-            check_output(['git', 'clone', '-ns', git_repo, d], stderr=STDOUT)
-            os.rename(d + '/.git', checkout_git_dir)
-            with in_dir(checkout_dir):
-                check_output(['git', 'reset', 'HEAD'])
+def fetch(git_repo, ref, include, checkout_dir, verbose=0):
+    git_dir = checkout_dir + '/.git'
+    if not os.path.exists(git_dir):
+        os.system("git clone -b %s %s %s" % (ref, git_repo, checkout_dir))
 
     # Read the LFS metadata
     found = False
@@ -229,6 +222,11 @@ def fetch(git_repo, checkout_dir=None, verbose=0):
     for path, oid, size in read_lfs_metadata(checkout_dir):
         found = True
         dst = checkout_dir + '/' + path
+
+        if not [i for i in include if path.endswith(i)]:
+            if verbose > 1:
+                print('Skipping', path, '(ignored)')
+            continue
 
         # Skip the file if it looks like it's already there
         with ignore_missing_file():
