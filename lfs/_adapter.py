@@ -214,7 +214,9 @@ def fetch_urls(lfs_url, lfs_auth_info, oid_list):
 def fetch(git_repo, ref, include, checkout_dir, verbose=0):
     git_dir = checkout_dir + '/.git'
     if not os.path.exists(git_dir):
-        os.system("git clone -b %s %s %s" % (ref, git_repo, checkout_dir))
+        cmd = "git clone -b %s %s %s" % (ref, git_repo, checkout_dir)
+        if os.system(cmd):
+            raise ValueError('clone failed: %s' % cmd)
 
     # Read the LFS metadata
     found = False
