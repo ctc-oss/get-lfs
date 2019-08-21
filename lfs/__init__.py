@@ -48,20 +48,21 @@ def get_from(path, url, ref):
     if not ref:
         raise ValueError('ref must be defined')
 
-    wd = "/tmp/%s" % hashlib.sha1(str("%s:%s" % (url, ref)).encode('utf-8')).hexdigest()
-
-    if not os.path.isdir(os.path.join(wd, '.git')):
-        if not os.path.exists(wd):
-            os.mkdir(wd)
-
     multi = type(path) is not str and hasattr(path, "__iter__")
     paths = path if multi else [path]
 
-    api.checkout(url, ref, paths, [], wd)
+    wd = checkout(url, ref, paths, [])
 
     files = map(lambda p: os.path.join(wd, p), paths)
     return files if multi else list(files)[0]
 
 
-def checkout(url, ref, include, exclude, dest):
-    api.checkout(url, ref, include, exclude, dest)
+def checkout(url, ref, include, exclude):
+    wd = "/tmp/%s" % hashlib.sha1(str("%s:%s" % (url, ref)).encode('utf-8')).hexdigest()
+    if not os.path.isdir(os.path.join(wd, '.git')):
+        if not os.path.exists(wd):
+            os.mkdir(wd)
+
+    api.checkout(url, ref, include, exclude, wd)
+
+    return wd
