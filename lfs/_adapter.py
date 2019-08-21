@@ -20,6 +20,12 @@ except ImportError:
 MEDIA_TYPE = 'application/vnd.git-lfs+json'
 POST_HEADERS = {'Accept': MEDIA_TYPE, 'Content-Type': MEDIA_TYPE}
 
+ssl_must_verify = True
+if os.getenv('GIT_SSL_NO_VERIFY', False):
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
+    ssl_must_verify = False
+
 
 def client():
     return 'adapter'
@@ -117,7 +123,11 @@ def get_lfs_endpoint_url(git_repo, checkout_dir):
     # ssh git@git-server.com git-lfs-authenticate foo/bar.git download
     if path.endswith('/info/lfs'):
         path = path[:-len('/info/lfs')]
-    auth_header = get_lfs_api_token(host, path)
+
+    auth_header = ''
+    if ssl_must_verify:
+        auth_header = get_lfs_api_token(host, path)
+
     return url, auth_header
 
 
@@ -186,7 +196,8 @@ def fetch_urls(lfs_url, lfs_auth_info, oid_list):
     objects = []
     data = json.dumps({'operation': 'download', 'objects': oid_list})
     headers = dict(POST_HEADERS)
-    headers.update(lfs_auth_info)
+    if lfs_auth_info:
+        headers.update(lfs_auth_info)
     req = Request(lfs_url + '/objects/batch', data.encode('ascii'), headers)
 
     try:
@@ -214,7 +225,9 @@ def fetch_urls(lfs_url, lfs_auth_info, oid_list):
 def fetch(git_repo, ref, include, checkout_dir, verbose=0):
     git_dir = checkout_dir + '/.git'
     if not os.path.exists(git_dir):
-        os.system("git clone -b %s %s %s" % (ref, git_repo, checkout_dir))
+        cmd = "git clone -b %s %s %s" % (ref, git_repo, checkout_dir)
+        if os.system(cmd):
+            raise ValueError('clone failed: %s' % cmd)
 
     # Read the LFS metadata
     found = False

@@ -2,9 +2,9 @@ import hashlib
 import os
 
 if os.system('which git-lfs > /dev/null') == os.F_OK:
-    import _native as api
+    from . import _native as api
 else:
-    import _adapter as api
+    from . import _adapter as api
 
 
 def is_uri(s):
@@ -48,20 +48,19 @@ def get_from(path, url, ref):
     if not ref:
         raise ValueError('ref must be defined')
 
-    sumstr = hashlib.sha1("%s:%s" % (url, ref)).hexdigest()
-    wd = "/tmp/%s" % sumstr
+    wd = "/tmp/%s" % hashlib.sha1(str("%s:%s" % (url, ref)).encode('utf-8')).hexdigest()
 
     if not os.path.isdir(os.path.join(wd, '.git')):
         if not os.path.exists(wd):
             os.mkdir(wd)
 
-    multi = hasattr(path, "__iter__")
+    multi = type(path) is not str and hasattr(path, "__iter__")
     paths = path if multi else [path]
 
     api.checkout(url, ref, paths, [], wd)
 
     files = map(lambda p: os.path.join(wd, p), paths)
-    return files if multi else files[0]
+    return files if multi else list(files)[0]
 
 
 def checkout(url, ref, include, exclude, dest):
