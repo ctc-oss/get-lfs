@@ -12,6 +12,6 @@ setup(name='get-lfs',
       install_requires=requires,
       include_package_data=True,
       extras_require={
-          'native': ['GitPython']
+          'native': ['GitPython==3.0.5']
       }
       )
