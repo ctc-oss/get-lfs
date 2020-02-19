@@ -1,0 +1,6 @@
+.*
+Pipfile*
+README.md
+Dockerfile
+setup.py
+version.py
