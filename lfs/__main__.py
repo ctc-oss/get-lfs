@@ -1,25 +1,25 @@
 import os
 
 import argparse
+import lfs
 
-from lfs import get, get_from, client_type, parse
 
-parser = argparse.ArgumentParser()
-parser.add_argument("uri", type=str, help="lfs uri string")
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("lfs_url", type=str, help="LFS repo URL")
+    parser.add_argument("-r", "--ref", type=str, default='master', help="LFS data ref")
+    parser.add_argument("-I", "--include", type=str, help="Inclusion pattern; empty for all")
+    parser.add_argument("-X", "--exclude", type=str, help="Exclusion pattern; defaults to xview dict")
+    args = parser.parse_args()
 
-print('using repo uri: %s' % args.uri)
-print('using client: %s' % client_type())
+    includes = []
+    if args.include:
+        includes = args.include.split(',')
 
-f = get(args.uri)
-print(f)
-print(os.stat(f))
+    excludes = []
+    if args.exclude:
+        excludes = args.exclude.split(',')
 
-_, https, ref = parse(args.uri)
-f = get_from('train/80.geojson', ref=ref, url=https)
-print(f)
-print(os.stat(f))
+    wd = lfs.checkout(args.lfs_url, args.ref, includes, excludes)
 
-for f in get_from(['train/79.geojson', 'train/805.geojson'], ref=ref, url=https):
-    print(f)
-    print(os.stat(f))
+    print(wd)
