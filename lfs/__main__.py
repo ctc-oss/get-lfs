@@ -24,6 +24,12 @@ if __name__ == "__main__":
     if args.exclude:
         excludes = args.exclude.split(',')
 
-    wd = lfs.checkout(args.lfs_url, args.ref, includes, excludes)
+    if lfs.is_uri(args.lfs_url):
+        path, url, ref = lfs.parse(args.lfs_url)
+        if not ref:
+            ref = args.ref
+        f = lfs.get_from(path, url, ref)
+    else:
+        f = lfs.checkout(args.lfs_url, args.ref, includes, excludes)
 
-    print(wd)
+    print(f)
