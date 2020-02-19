@@ -53,7 +53,7 @@ def get_from(path, url, ref):
 
     wd = checkout(url, ref, paths, [])
 
-    files = map(lambda p: os.path.join(wd, p), paths)
+    files = map(lambda p: os.path.join(wd, str(p).lstrip('/')), paths)
     return files if multi else list(files)[0]
 
 
