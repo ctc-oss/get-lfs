@@ -7,7 +7,7 @@ verify_ssl = true
 
 [packages]
 GitPython = "==3.0.8"
-configargparse = "*"
+configargparse = "==0.14.0"
 
 [requires]
 python_version = "3.6"
